@@ -41,6 +41,7 @@ int main(int argc, const char* argv[]) {
 
 	// cout << "Writing to the file" << endl;
 	// cout << "Enter your name: "<< endl;
+	// cout
 
 	{
 		int i = 1;
