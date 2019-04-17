@@ -372,8 +372,8 @@ void optAlg()
 int main(int argc, const char* argv[])
 {
 	// approAlgII();
-	approAlgI();
-	// optAlg();
+	//approAlgI();
+	optAlg();
 
 	return 0;
 }
