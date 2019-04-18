@@ -13,6 +13,7 @@ struct Job
 	int order;
 	int r;
 	int f;
+	bool removed;
 };
 
 struct JobOverlap
@@ -49,7 +50,7 @@ bool operator<(const Job& a, const Job& b)
 void approAlgI()
 {
 	vector<Job> job;
-	queue<Job> remainingJobs;
+	deque<Job> remainingJobs;
 	vector<JobOverlap> job_overlap;
 	vector<Block> blocks;
 	int cur_num = 0;
@@ -72,16 +73,15 @@ void approAlgI()
 	for (size_t i = 1; i < job.size() - 1; i++)
 	{
 		job[i].order = i;
+		job[i].removed = false;
 		cout << job[i] << endl;
 	}
 	cout << endl;
 
 	for (size_t i = 1; i < job.size(); i++)
 	{
-		remainingJobs.emplace(job[i]);
+		remainingJobs.emplace_back(job[i]);
 	}
-
-	job_overlap.resize(remainingJobs.size());
 
 	auto maxf = max_element(std::begin(job), std::end(job),
 		[](const Job & a, const Job & b)
@@ -92,17 +92,21 @@ void approAlgI()
 
 	int minr = job[1].r;
 
-	while (!remainingJobs.empty())
+	int removedNum = job.size()-2;
+
+	while (removedNum != 0)
 	{
+		job_overlap.clear();
+		job_overlap.resize(maxf);
 		int maxNum = 0;
 		int maxt = 0;
-		for (size_t j = minr; j < maxf; j++)
+		for (size_t j = 1; j < maxf - minr + 1; j++)
 		{
 			job_overlap[j].num = 0;
 			job_overlap[j].time = j;
-			for (int k = remainingJobs.front().order; k <= remainingJobs.back().order; k++)
+			for (int k = 1; k <= remainingJobs.size(); k++)
 			{
-				if (job[k].r <= j <job[k].f)
+				if (job[k].r <= j && j < job[k].f && !job[k].removed)
 				{
 					job_overlap[j].num++;
 					job_overlap[j].overlap.emplace_back(job[k]);
@@ -116,11 +120,12 @@ void approAlgI()
 			}
 		}
 		//Remove Jobs
-		for (int n = 1; n < maxNum; n++)
+		for (int n = 0; n < maxNum; n++)
 		{
-			// remainingJobs[job_overlap[maxt].overlap.front().job].remove;
+			remainingJobs[job_overlap[maxt].overlap[n].order].removed = true;
+			job[job_overlap[maxt].overlap[n].order].removed = true;
+			removedNum--;
 		}
-
 		//Blocks information
 		blocks.resize(job.size());
 		for (size_t b = 0; b < maxNum; b++)
