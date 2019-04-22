@@ -118,6 +118,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <Text Include="JobList.txt" />
+    <Text Include="JobList1.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
