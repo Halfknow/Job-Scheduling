@@ -7,6 +7,7 @@
 #include <queue>
 #include <fmt/format.h>
 #include <ctime>
+#include "GA/Galgo.hpp"
 
 using namespace std;
 
@@ -70,6 +71,8 @@ struct GeneralJob
 	float r;
 	float p;
 	float f;
+	float s;
+	float c;
 	bool removed;
 };
 
@@ -88,8 +91,19 @@ struct generalJobBlock
 	vector<GeneralJob> job;
 };
 
+struct optimalGeneralBlocks
+{
+	float block_obj;
+	vector<generalJobBlock> blocks;
+	// bool operator<(const optimalGeneralBlocks& nextBlocks) const
+	// {
+	// 	return block_obj < nextBlocks.block_obj;
+	// }
+};
+
 vector<GeneralJob> generalJob;
 vector<GeneralJob> generalJob_init;
+deque<optimalGeneralBlocks> optimalBlocks;
 
 std::istream& operator>>(std::istream& i, Job& j)
 {
@@ -904,6 +918,91 @@ void approGeneralUnitAlg(HDC hdc, HWND hWnd, RECT rect)
 	}
 }
 
+// objective class example
+template <typename T>
+class MyObjective
+{
+public:
+	// objective function example : Rosenbrock function
+	// minimizing f(x,y) = (1 - x)^2 + 100 * (y - x^2)^2
+	static std::vector<T> Objective(const std::vector<T>& x)
+	{
+		deque<GeneralJob> generalJob_1;
+		deque<generalJobBlock> generalBlocks;
+		for (size_t i = 0; i < generalJob.size()-1; i++)
+		{
+			generalJob[i+1].s = x[i];
+			generalJob[i+1].c = x[i] + generalJob[i+1].p;
+		}
+		generalJob_1.resize(generalJob.size()-1);
+		for (size_t i = 0; i < generalJob.size()-1; i++)
+		{
+			generalJob_1[i] = generalJob[i+1];
+		}
+		std::sort(generalJob_1.begin(), generalJob_1.end(),
+			[](const GeneralJob & a, const GeneralJob & b)
+		{
+			return a.s < b.s | a.s == b.s && a.s + a.p < b.s + b.p;
+		});
+		for (size_t i = 0; i < generalJob_1.size(); i++)
+		{
+			if (i == 0)
+			{
+				generalJobBlock general_block_first = { 1,generalJob_1[i].s,generalJob_1[i].p, {generalJob_1[i]} };
+				generalBlocks.emplace_back(general_block_first);
+			}
+			else
+			{
+				if(generalJob_1[i].s <= generalBlocks.back().time + generalBlocks.back().length)
+				{
+					generalBlocks.back().job.emplace_back(generalJob_1[i]);
+					generalBlocks.back().num = generalBlocks.back().job.size();
+					generalBlocks.back().length = max_element(generalBlocks.back().job.begin(), generalBlocks.back().job.end(),
+						[](const GeneralJob & a, const GeneralJob & b)
+						{
+							return a.c < b.c;
+						})->c - generalBlocks.back().time;
+				}
+				if (generalJob_1[i].s > generalBlocks.back().time + generalBlocks.back().length)
+				{
+					generalJobBlock general_block_first = { 1,generalJob_1[i].s,generalJob_1[i].p, {generalJob_1[i]} };
+					generalBlocks.emplace_back(general_block_first);
+				}
+			}
+		}
+
+		T obj = 0.0;
+
+		for (size_t i = 0; i < generalBlocks.size(); i++)
+		{
+			obj += generalBlocks[i].length;
+		}
+
+		optimalBlocks.emplace_back(optimalGeneralBlocks());
+		optimalBlocks.back().block_obj = obj;
+		for (size_t i = 0; i < generalBlocks.size(); i++)
+		{
+			optimalBlocks.back().blocks.emplace_back(generalBlocks[i]);
+		}
+
+		// T obj = -(pow(1 - x[0], 2) + 100 * pow(x[2] + x[1] - x[0] * x[0], 2));
+		return { obj };
+	}
+	// NB: GALGO maximize by default so we will maximize -f(x,y)
+};
+
+// constraints example:
+// 1) x * y + x - y + 1.5 <= 0
+// 2) 10 - x * y <= 0
+template <typename T>
+std::vector<T> MyConstraint(const std::vector<T> & x)
+{
+	T Constraint = -12;
+	return { Constraint };
+}
+// NB: a penalty will be applied if one of the constraints is > 0 
+// using the default adaptation to constraint(s) method
+
 using namespace Gdiplus;
 #pragma comment (lib,"Gdiplus.lib")
 
@@ -1002,6 +1101,78 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
 			drawGeneralUnitFile(hdc);
 			approGeneralUnitAlg(hdc, hWnd, rect);
 			break;
+		case 5:
+		{	
+			drawGeneralFile(hdc);
+			// defining lower bound LB and upper bound UB
+			std::vector<double> LB;
+			std::vector<double> UB;
+
+			LB.resize(generalJob.size()-1);
+			UB.resize(generalJob.size()-1);
+
+			for (size_t i = 0; i < generalJob.size()-1; i++)
+			{
+				// assert(LB[i] < UB[i]);
+				LB[i] = generalJob[i+1].r;
+				UB[i] = generalJob[i+1].f - generalJob[i+1].p;
+			}
+
+			// initiliazing genetic algorithm
+			galgo::GeneticAlgorithm<double> ga(MyObjective<double>::Objective, 100, LB, UB, 5000, false);
+
+			// setting constraints
+			ga.Constraint = MyConstraint;
+
+			// running genetic algorithm
+			ga.run();
+
+			std::sort(optimalBlocks.begin(), optimalBlocks.end(),
+				[](const optimalGeneralBlocks &a, const optimalGeneralBlocks &b)
+			{
+					return a.block_obj < b.block_obj;
+			});
+			Gdiplus::Graphics graphics(hdc);
+			Gdiplus::Pen      pen(Gdiplus::Color(255, 255, 0, 0));
+			for (int i = 0; i < optimalBlocks[0].blocks.size(); i++)
+			{
+				auto y_1 = min_element(optimalBlocks[0].blocks[i].job.begin(), optimalBlocks[0].blocks[i].job.end(),
+					[](const GeneralJob & a, const GeneralJob & b)
+				{
+						return a.order < b.order;
+				}
+				)->order;
+				auto y_2 = max_element(optimalBlocks[0].blocks[i].job.begin(), optimalBlocks[0].blocks[i].job.end(),
+					[](const GeneralJob & a, const GeneralJob & b)
+					{
+						return a.order < b.order;
+					}
+				)->order;
+				graphics.DrawLine(&pen, 20 * optimalBlocks[0].blocks[i].time, float(20 * y_1 - 9 + 10), 20 * optimalBlocks[0].blocks[i].time, float(20 * y_2 + 9 + 10));
+				graphics.DrawLine(&pen, 20 * (optimalBlocks[0].blocks[i].time + optimalBlocks[0].blocks[i].length), float(20 * y_1 - 9 + 10), 20 * (optimalBlocks[0].blocks[i].time + optimalBlocks[0].blocks[i].length), float(20 * y_2 + 9 + 10));
+			}
+			for (size_t i = 0; i < optimalBlocks[0].blocks.size(); i++)
+			{
+				const auto buf = fmt::format(
+					L"Blocks {} time: {:0.2f} Jobs in block: ",
+					i + 1,
+					optimalBlocks[0].blocks[i].time);
+				GetClientRect(hWnd, &rect);
+				rect.left = 700;
+				rect.top = 100 + 20 * i;
+				DrawText(hdc, buf.c_str(), -1, &rect, NULL);
+				for (size_t a = 0; a < optimalBlocks[0].blocks[i].num; a++)
+				{
+					TCHAR Buffer[10];
+					wsprintf(Buffer, TEXT("%i"), optimalBlocks[0].blocks[i].job[a].order);
+					GetClientRect(hWnd, &rect);
+					rect.left = 940 + 20 * a;
+					rect.top = 100 + 20 * i;
+					DrawText(hdc, Buffer, -1, &rect, NULL);
+					// cout << blocks[cur_num].job[a].order << " ";
+				}
+			}
+			break; }
 		case 6:
 			drawInitFile(hdc);
 			break;

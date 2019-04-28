@@ -123,6 +123,15 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GA\Chromosome.hpp" />
+    <ClInclude Include="GA\Converter.hpp" />
+    <ClInclude Include="GA\Evolution.hpp" />
+    <ClInclude Include="GA\Galgo.hpp" />
+    <ClInclude Include="GA\GeneticAlgorithm.hpp" />
+    <ClInclude Include="GA\Population.hpp" />
+    <ClInclude Include="GA\Randomize.hpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

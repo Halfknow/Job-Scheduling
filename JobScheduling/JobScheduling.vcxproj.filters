@@ -27,4 +27,27 @@
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GA\Chromosome.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="GA\Converter.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="GA\Evolution.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="GA\Galgo.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="GA\GeneticAlgorithm.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="GA\Population.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="GA\Randomize.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
