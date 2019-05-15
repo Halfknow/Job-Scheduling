@@ -56,7 +56,8 @@ public:
    // return number of generations
    int nbgen() const;
    // return selection pressure
-   T SP() const; 
+   T SP() const;
+
 
 private:
    std::vector<CHR<T,N>> curpop;               // current population
@@ -129,7 +130,7 @@ void Population<T,N>::evolution()
 {   
    // initializing mating population index
    matidx = 0;
-   // selecting mating population
+   // selecting mating population TNT
    ptr->Selection(*this);
    // applying elitism if required
    this->elitism(); 
