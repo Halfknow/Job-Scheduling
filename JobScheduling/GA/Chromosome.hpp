@@ -145,7 +145,7 @@ inline void Chromosome<T,N>::evaluate()
 {
    // decoding chromosome: converting chromosome string to real parameters
    for (int i = 0; i < ptr->nbparam; ++i) {
-      uint64_t value = GetValue(chr.substr(i * N, N));
+      uint64_t value = GetValue(std::string_view(chr.data() + i * N, N));
       param[i] = ptr->lowerBound[i] + (value / (T)ptr->MAXVAL) * (ptr->upperBound[i] - ptr->lowerBound[i]);
    } 
    // computing objective result(s) 
