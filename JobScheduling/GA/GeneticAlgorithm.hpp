@@ -23,10 +23,8 @@ class GeneticAlgorithm
    template <typename K>
    using Func = std::vector<K> (*)(const std::vector<K>&);
 
-private:
-   Population<T,N> pop;       // population of chromosomes
-
 public:
+   Population<T,N> pop;       // population of chromosomes
    std::vector<T> lowerBound; // parameter(s) lower bound
    std::vector<T> upperBound; // parameter(s) upper bound
    std::vector<T> initialSet; // initial set of parameter(s)
@@ -38,25 +36,25 @@ private:
 public: 
    // objective function pointer
    Func<T> Objective; 
-   // selection method initialized to roulette wheel selection                                   
-   void (*Selection)(Population<T,N>&) = RWS;  
+   // selection method initialized to tournament selection                                   
+   void (*Selection)(Population<T,N>&) = TNT;
    // cross-over method initialized to 1-point cross-over                                
    void (*CrossOver)(const Population<T,N>&, CHR<T,N>&, CHR<T,N>&) = P1XO;
-   // mutation method initialized to single-point mutation 
-   void (*Mutation)(CHR<T,N>&) = SPM;  
+   // mutation method initialized to uniform mutation 
+   void (*Mutation)(CHR<T,N>&) = UNM;
    // adaptation to constraint(s) method                                      
    void (*Adaptation)(Population<T,N>&) = nullptr; 
    // constraint(s)                              
    std::vector<T> (*Constraint)(const std::vector<T>&) = nullptr; 
 
    T covrate = .50;   // cross-over rate
-   T mutrate = .05;   // mutation rate   
+   T mutrate = .02;   // mutation rate   
    T SP = 1.5;        // selective pressure for RSP selection method 
    T tolerance = 0.0; // terminal condition (inactive if equal to zero)
                  
    int elitpop = 1;   // elit population size
    int matsize;       // mating pool size, set to popsize by default
-   int tntsize = 10;  // tournament size
+   int tntsize = 10;   // tournament size
    int genstep = 10;  // generation step for outputting results
    int precision = 5; // precision for outputting results
 
@@ -64,20 +62,21 @@ public:
    GeneticAlgorithm(Func<T> objective, int popsize, const std::vector<T>& lowerBound, const std::vector<T>& upperBound, int nbgen, bool output = false);
    // run genetic algorithm
    void run();
+   void createPopulation();
+   void runLeft(Population<T, N>& pop);
    // return best chromosome 
    const CHR<T,N>& result() const;
-
-private:
    int nbgen;     // number of generations
    int nogen = 0; // numero of generation
    int nbparam;   // number of parameters to be estimated
    int popsize;   // population size
    bool output;   // control if results must be outputted
-
    // check inputs validity
-   bool check() const ;
    // print results for each new generation
+   bool check() const ;
    void print() const;
+
+private:
 };
 
 /*-------------------------------------------------------------------------------------------------*/
@@ -89,7 +88,7 @@ GeneticAlgorithm<T,N>::GeneticAlgorithm(Func<T> objective, int popsize, const st
    this->Objective = objective;
    this->nbparam = upperBound.size();
    this->popsize = popsize;
-   this->matsize = popsize;
+   this->matsize = 0.2 * popsize;
    this->lowerBound = lowerBound;
    this->upperBound = upperBound;
    this->nbgen = nbgen;
@@ -160,57 +159,68 @@ void GeneticAlgorithm<T,N>::run()
    if (Constraint != nullptr && Adaptation == nullptr) {
       Adaptation = DAC;
    }
-
+}
+	
+// run genetic algorithm
+template <typename T, int N>
+void GeneticAlgorithm<T,N>::createPopulation()
+{
    // initializing population
-   pop = Population<T,N>(*this);
+   pop = Population<T, N>(*this);
 
    if (output) {
-      std::cout << "\n Running Genetic Algorithm...\n";
-      std::cout << " ----------------------------\n";
+	   std::cout << "\n Running Genetic Algorithm...\n";
+	   std::cout << " ----------------------------\n";
    }
 
    // creating population
    pop.creation();
-   // initializing best result and previous best result
-   T bestResult = pop(0)->getTotal();
-   T prevBestResult = bestResult;
-   // outputting results 
-   if (output) print();
-    
-   // starting population evolution
-   for (nogen = 1; nogen <= nbgen; ++nogen) {
-      // evolving population
-      pop.evolution();
-      // getting best current result
-      bestResult = pop(0)->getTotal();
-      // outputting results
-      if (output) print();
-      // checking convergence
-      if (tolerance != 0.0) {
-         if (fabs(bestResult - prevBestResult) < fabs(tolerance)) {
-            break;
-         }
-         prevBestResult = bestResult;
-      }
-   } 
+}
+	
+// run genetic algorithm
+template <typename T, int N>
+void GeneticAlgorithm<T,N>::runLeft(Population<T,N> &pop)
+{
+	// initializing best result and previous best result
+	T bestResult = pop(0)->getTotal();
+	T prevBestResult = bestResult;
+	// outputting results 
+	if (output) print();
 
-   // outputting contraint value
-   if (Constraint != nullptr) {
-      // getting best parameter(s) constraint value(s)
-      std::vector<T> cst = pop(0)->getConstraint(); 
-      if (output) {
-         std::cout << "\n Constraint(s)\n";
-         std::cout << " -------------\n";
-         for (unsigned i = 0; i < cst.size(); ++i) {
-            std::cout << " C"; 
-            if (nbparam > 1) {
-               std::cout << std::to_string(i + 1);
-            }
-            std::cout << "(x) = " << std::setw(6) << std::fixed << std::setprecision(precision) << cst[i] << "\n"; 
-         }
-         std::cout << "\n"; 
-      }
-   }   
+	// starting population evolution
+	for (nogen = 1; nogen <= nbgen; ++nogen) {
+		// evolving population
+		pop.evolution();
+		// getting best current result
+		bestResult = pop(0)->getTotal();
+		// outputting results
+		if (output) print();
+		// checking convergence
+		if (tolerance != 0.0) {
+			if (fabs(bestResult - prevBestResult) < fabs(tolerance)) {
+				break;
+			}
+			prevBestResult = bestResult;
+		}
+	}
+
+	// outputting contraint value
+	if (Constraint != nullptr) {
+		// getting best parameter(s) constraint value(s)
+		std::vector<T> cst = pop(0)->getConstraint();
+		if (output) {
+			std::cout << "\n Constraint(s)\n";
+			std::cout << " -------------\n";
+			for (unsigned i = 0; i < cst.size(); ++i) {
+				std::cout << " C";
+				if (nbparam > 1) {
+					std::cout << std::to_string(i + 1);
+				}
+				std::cout << "(x) = " << std::setw(6) << std::fixed << std::setprecision(precision) << cst[i] << "\n";
+			}
+			std::cout << "\n";
+		}
+	}
 }
 
 /*-------------------------------------------------------------------------------------------------*/
