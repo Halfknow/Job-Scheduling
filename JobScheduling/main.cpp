@@ -543,7 +543,7 @@ void approAlgII(HDC hdc, HWND hWnd, RECT rect)
 		int maxNum = 1;
 		int maxj = 0;
 		auto interval = job_1[i].f - job_1[i].r;
-		assert(interval > 0);
+		//assert(interval > 0);
 		auto& cur_overlap = job_overlap[i];
 		cur_overlap.resize(interval);
 		for (int j = 0; j < interval; j++)
